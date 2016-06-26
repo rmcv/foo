@@ -53,9 +53,7 @@
                                  rs (reduce +' (drop (inc v) xs))]
                              (= ls rs)))))
 
-
 (st/check-var #'equi)
-
 
 (s/def ::S (s/coll-of #{1 -1} []))
 
@@ -69,3 +67,46 @@
 (gen/sample (s/gen ::N))
 
 (s/explain ::S [1 1 1 -1 -2])
+
+(defn pairs
+  ([xs]
+   (pairs 1000000000 xs))
+  ([max-res xs]
+   (let [ans (transduce (comp (map val)
+                           (map #(/ (* % (dec %)) 2)))
+                        (fn
+                          ([] 0)
+                          ([s] s)
+                          ([s e]
+                           (if (>= s max-res)
+                             (reduced max-res)
+                             (+' s e))))
+                        (frequencies xs))]
+     (min ans max-res))))
+
+(defn pairs
+  ([xs]
+   (pairs 1000000000 xs))
+  ([max-res xs]
+   (->> xs
+        frequencies
+        (map val)
+        (map #(/ (* % (dec %)) 2))
+        (reduce (fn [s e]
+                  (if (>= s max-res)
+                    (reduced max-res)
+                    (+' s e))))
+        (min max-res))))
+
+(s/fdef pairs
+        :args (s/cat :max-res (s/int-in 1 100)
+                     :xs (s/& (s/coll-of int? []) #(> (count %) 0)))
+        :ret int?
+        :fn (s/and #(<= (:ret %) (-> % :args :max-res))
+                   #(let [max-res (-> % :args :max-res)
+                          cnt (->> % :args :xs frequencies (filter (fn [[_ v]] (> v 1))) count)]
+                      (>= (:ret %) (min max-res cnt)))
+                   #(<= (:ret %) (-> % :args :xs count))))
+
+(st/check-var #'pairs)
+
