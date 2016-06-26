@@ -73,7 +73,7 @@
 (st/check-var #'equi)
 
 
-
+;; changing
 
 
 (s/def ::S (s/coll-of #{1 -1} []))
