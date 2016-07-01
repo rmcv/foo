@@ -22,6 +22,14 @@
 
 (st/check-var #'ranged-rand)
 
+;;
+;; test equal on both end
+;;  e.g -1 2 4 -5
+;;    sums of left and right (of index) 1 are equal
+;;    left: -1
+;;    right: 4 + -5 = -1
+;;
+
 (defn equi [xs]
   (let [rs  (reduce +' xs)
         ans (loop [xs xs
@@ -68,12 +76,19 @@
 
 (s/explain ::S [1 1 1 -1 -2])
 
+;;
+;;  find number of pairs (edges) of same number
+;;  e.g. 3, 3, 3, 4, 5, 6, 5 => 4 pairs
+;;    since (3,3,3) => 3 pairs
+;;          (5,5) => 1 pairs
+;;
+
 (defn pairs
   ([xs]
    (pairs 1000000000 xs))
   ([max-res xs]
    (let [ans (transduce (comp (map val)
-                           (map #(/ (* % (dec %)) 2)))
+                              (map #(/ (* % (dec %)) 2)))
                         (fn
                           ([] 0)
                           ([s] s)
@@ -110,3 +125,68 @@
 
 (st/check-var #'pairs)
 
+;;
+;; longest match of proper prefix and suffix
+;;
+
+(defn all-suffix [s]
+  (if-let [s (seq s)]
+    (cons (apply str s) (lazy-seq (all-suffix (rest s))))))
+
+(defn all-prefix [s]
+  (if-let [x (seq s)]
+    (cons (apply str x) (lazy-seq (all-prefix (butlast x))))))
+
+(defn suffix-array [s]
+  (let [ss (all-suffix s)]
+    (apply sorted-map-by compare (interleave ss (range)))))
+
+(defn lcps [s]
+  (reduce (fn [s pfx]
+            (let [ss (subseq s #(>= 0 (compare %1 %2)) pfx)]
+              (if (and (= 1 (count ss))
+                       (= (ffirst ss) pfx))
+                (reduced ss)
+                (into (empty s) ss))))
+          (suffix-array s)
+          (all-prefix s)))
+
+(lcps "abab")
+
+(lcps "abcdxxxxabcdx")
+
+(all-suffix "abab")
+(all-prefix "abcdxxxxabcd")
+
+(all-prefix "abc")
+
+
+;;
+;; stack machine
+;;
+
+(defn dup [s]
+  (let [x (first s)]
+    (cons x s)))
+
+(defn op [op s]
+  (let [x (first s)
+        y (first (rest s))]
+    (cons (op x y) (drop 2 s))))
+
+(defn push [v s]
+  (cons v s))
+
+(reductions (fn [s f]
+              (try (f s)
+                   (catch Exception e
+                     (reduced :err))))
+            '()
+            [(partial push 12)
+             dup
+             (partial push 3)
+             (partial op +)
+             (partial push 20)
+             (partial op -)
+             (partial op +)
+             (partial op +)])
